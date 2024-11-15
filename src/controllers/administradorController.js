@@ -1,7 +1,7 @@
 const Model = require('../models');
 import bcrypt from 'bcrypt';
 const Administrador = Model.administradors;
-
+import jwt from 'jsonwebtoken';
 module.exports = {
   // Listar todos os administradores
   async index(req, res) {
@@ -104,6 +104,41 @@ module.exports = {
       console.error('Error deleting administrator:', error);
       return res.status(500).json({
         error: 'Erro ao excluir administrador. Por favor, tente novamente.',
+      });
+    }
+  },
+
+  async login(req, res) {
+    try {
+      const { email, senha } = req.body;
+      if (!email || !senha) {
+        return res.status(400).json({
+          errors: ['Faltando Email ou Senha'],
+        });
+      }
+
+      const user = await Administrador.findOne({ where: { email } });
+      if (!user) {
+        return res.status(400).json({
+          errors: ['Email ou Senha Incorretos!'],
+        });
+      }
+
+      const isMatch = await bcrypt.compare(senha, user.senha);
+      if (!isMatch) {
+        return res.status(400).json({
+          errors: ['Email ou Senha Incorretos!'],
+        });
+      }
+
+      const token = jwt.sign({ id: user.id }, process.env.TOKENSECRET, {
+        expiresIn: '1d',
+      });
+
+      return res.status(200).json({ user, token });
+    } catch (e) {
+      return res.status(400).json({
+        errors: [e.message],
       });
     }
   },
